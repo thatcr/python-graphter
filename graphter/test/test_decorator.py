@@ -6,11 +6,13 @@ def test_identical_signature():
 		return a + b
 	assert signature(funk) == signature(graph(funk))
 
-def test_create_ref():
+def test_ref():
 	@graph
 	def funk(a, b):
-		return a + b
+		return locals()
 	
-	assert tuple(funk.ref(a, b)) == (funk, a, b)
+	assert tuple(funk.ref(1, 2)) == (funk, 1, 2)
+	
+	
 		
 	
