@@ -7,4 +7,4 @@ install:
 
 script:
     - python setup.py bdist_wheel
-    - pytest
+    - pytest --cov=graphter
