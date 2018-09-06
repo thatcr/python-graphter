@@ -14,7 +14,6 @@ def test_key():
 
 def test_cache():
 	cache = GraphDict()
-	
 	counter = 0
 
 	@graph(cache=cache)
@@ -27,10 +26,14 @@ def test_cache():
 	assert counter == 1
 	assert funk.ref(1, 2) in cache
 	
-	funk(1, 2)""
+	funk(1, 2)
 	import pprint; pprint.pprint(cache)
 	dis.dis(funk.__code__)
 	assert counter == 1
 	
-	
+	funk(1, 3)
+	assert funk.ref(1, 3) in cache
+	assert counter == 2
+
+
 
