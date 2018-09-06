@@ -1,7 +1,8 @@
 from bytecode import Bytecode
 from .bytecode import (
 	_store_key, _cache_return_value,
-	_return_from_cache, _update_siblings
+	_return_from_cache, _update_siblings,
+	_update_stack
 	)
 
 class GraphDict(dict):
@@ -15,6 +16,7 @@ def graph(f=None, cache=None):
 		if cache is not None:
 			code[:] = _cache_return_value(code, cache)
 			code[:0] = _return_from_cache(cache)
+			code[:] = _update_stack(code)
 			code[:0] = _update_siblings()
 		code[:0] = _store_key(f, code)
 	

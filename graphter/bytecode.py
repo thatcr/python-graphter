@@ -3,6 +3,7 @@ from bytecode import Instr, Label, Compare
 
 LOCAL_KEY = '__graphter_key__'
 LOCAL_VALUE = '__graphter_value__'
+LOCAL_PARENT = '__graphter_parent__'
 ATTR_STACK = '__graphter_stack__'
 
 
@@ -11,7 +12,7 @@ ATTR_STACK = '__graphter_stack__'
 
 class GraphterLocal(threading.local):
 	def __init__(self):
-		self.__dict__[ATTR_STACK] = [(None, set())]
+		self.__dict__[ATTR_STACK] = [(None, list())]
 _local = GraphterLocal()
 
 def _load_stack_head():
@@ -45,8 +46,8 @@ def _update_siblings():
 	with a reference to this call.
 	"""
 	yield from _load_stack_head() 
-	yield Instr('POP_TOP')
-	yield Instr('LOAD_ATTR', 'add')
+	yield Instr('STORE_FAST', LOCAL_PARENT)
+	yield Instr('LOAD_ATTR', 'append')
 	yield Instr('LOAD_FAST', LOCAL_KEY)	
 	yield Instr('CALL_FUNCTION', 1)
 	yield Instr('POP_TOP')
@@ -80,7 +81,7 @@ def _update_stack(code):
 	yield Instr('LOAD_ATTR', 'append')
 
 	yield Instr('LOAD_FAST', LOCAL_KEY)
-	yield Instr('BUILD_SET', 0)
+	yield Instr('BUILD_LIST', 0)
 	yield Instr('BUILD_TUPLE', 2)
 	
 	yield Instr('CALL_FUNCTION', 1)
@@ -97,7 +98,11 @@ def _update_stack(code):
 	yield Instr('LOAD_ATTR', ATTR_STACK)
 	yield Instr('LOAD_ATTR', 'pop')
 	yield Instr('CALL_FUNCTION', 0)
+	yield Instr('POP_TOP')
 	
+	yield Instr('END_FINALLY')
+	yield Instr('LOAD_CONST', None)
+	yield Instr('RETURN_VALUE')
 	
 def _cache_return_value(code, cache):
 	"""
@@ -106,7 +111,7 @@ def _cache_return_value(code, cache):
 	
 	label = Label()
 	for instr in code:
-		if getattr(instr, 'name', None) =='RETURN_VALUE':
+		if getattr(instr, 'name', None) == 'RETURN_VALUE':
 			yield Instr('JUMP_ABSOLUTE', label)
 			continue
 		yield instr
@@ -115,6 +120,23 @@ def _cache_return_value(code, cache):
 	yield label
 	
 	yield Instr('DUP_TOP')
+	yield from _load_stack_head()
+	yield Instr('POP_TOP')
+	yield Instr('LOAD_FAST', LOCAL_PARENT)
+
+	has_parent = Label()
+	carry_on = Label()
+	
+	yield Instr('JUMP_IF_TRUE_OR_POP', has_parent)
+	yield Instr('BUILD_LIST', 0)
+	yield Instr('JUMP_ABSOLUTE', carry_on)
+	
+	yield has_parent
+	yield Instr('BUILD_LIST', 1)
+	yield carry_on
+	
+	yield Instr('BUILD_TUPLE', 3)
+	
 	# now get the children and parent from the cache to make the entry
 	yield Instr('LOAD_CONST', cache)
 	yield Instr('LOAD_FAST', LOCAL_KEY)
