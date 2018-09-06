@@ -4,6 +4,8 @@ from bytecode import Instr, Label, Compare
 LOCAL_KEY = '__graphter_key__'
 LOCAL_VALUE = '__graphter_value__'
 LOCAL_PARENT = '__graphter_parent__'
+LOCAL_CHILDREN = '__graphter_children__'
+
 ATTR_STACK = '__graphter_stack__'
 
 
@@ -14,19 +16,6 @@ class GraphterLocal(threading.local):
 	def __init__(self):
 		self.__dict__[ATTR_STACK] = [(None, list())]
 _local = GraphterLocal()
-
-def _load_stack_head():
-	"""
-	Get the head of the graph building stack and unpack it
-	onto the intepreter stack such that 
-		TOS   = parent : Ref
-		TOS1  = siblings : Set[Ref]  
-	"""
-	yield Instr('LOAD_CONST', _local)
-	yield Instr('LOAD_ATTR', ATTR_STACK)
-	yield Instr('LOAD_CONST', -1)
-	yield Instr('BINARY_SUBSCR')
-	yield Instr('UNPACK_SEQUENCE', 2)
 	
 def _store_key(func, code):
 	"""
@@ -42,10 +31,18 @@ def _store_key(func, code):
 
 def _update_siblings():
 	"""
-	Update the set of siblings on the top of the graph stack
-	with a reference to this call.
+	Get the head of the graph building stack and unpack it
+	onto the intepreter stack such that 
+		TOS   = parent : Ref
+		TOS1  = siblings : Set[Ref]  
+	then store the parent ref in a local, and add our ref to
+	the list of siblings
 	"""
-	yield from _load_stack_head() 
+	yield Instr('LOAD_CONST', _local)
+	yield Instr('LOAD_ATTR', ATTR_STACK)
+	yield Instr('LOAD_CONST', -1)
+	yield Instr('BINARY_SUBSCR')
+	yield Instr('UNPACK_SEQUENCE', 2)	
 	yield Instr('STORE_FAST', LOCAL_PARENT)
 	yield Instr('LOAD_ATTR', 'append')
 	yield Instr('LOAD_FAST', LOCAL_KEY)	
@@ -82,6 +79,9 @@ def _update_stack(code):
 
 	yield Instr('LOAD_FAST', LOCAL_KEY)
 	yield Instr('BUILD_LIST', 0)
+	yield Instr('DUP_TOP')
+	yield Instr('STORE_FAST', LOCAL_CHILDREN)
+	
 	yield Instr('BUILD_TUPLE', 2)
 	
 	yield Instr('CALL_FUNCTION', 1)
@@ -120,8 +120,7 @@ def _cache_return_value(code, cache):
 	yield label
 	
 	yield Instr('DUP_TOP')
-	yield from _load_stack_head()
-	yield Instr('POP_TOP')
+	yield Instr('LOAD_FAST', LOCAL_CHILDREN)
 	yield Instr('LOAD_FAST', LOCAL_PARENT)
 
 	has_parent = Label()
