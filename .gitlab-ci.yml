@@ -1,8 +1,13 @@
-image: continuumio/miniconda3:latest
+
 
 before_script:
   - pip install -r requirements.txt
 
 pytest:
+  image: continuumio/miniconda3:latest
   script: pytest    
 
+pytest-win:
+  script: echo %COMPUTERNAME% %USERNAME%  
+    
+    
