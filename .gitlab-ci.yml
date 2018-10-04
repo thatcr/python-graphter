@@ -10,4 +10,3 @@ pytest:
 pytest-win:
   script: echo %COMPUTERNAME% %USERNAME%  
     
-    
